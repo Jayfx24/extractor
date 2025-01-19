@@ -26,13 +26,11 @@ class Content:
         print(f'TITLE: {self.title}')
         print(f'AUTHOR: {self.author}\n')
         print(f'Date: {self.date}\n')
-        print(f'BODY: {self.body}\n')
-        
-
+        print(f'BODY: {self.body.strip("\n")}\n')
 
 
 class Website:
-    def __init__(self, name, url, target_pattern, absolute_url, title_tag, body_tag,author_tag,date_tag):
+    def __init__(self, name, url, target_pattern, absolute_url, title_tag, body_tag, author_tag, date_tag):
         self.name = name
         self.url = url
         self.target_pattern = target_pattern
@@ -42,6 +40,7 @@ class Website:
         self.author_tag = author_tag
         self.date_tag = date_tag
 
+
 class Request:
     def __init__(self, website):
         self.site = website
@@ -49,7 +48,7 @@ class Request:
 
     def headers(self):
         fake = Faker()
-        
+
         headers = {
             "User-Agent": fake.user_agent(),
             "Accept": fake.mime_type(),
@@ -58,12 +57,13 @@ class Request:
             "Connection": "keep-alive"
         }
         return headers
-    
-    def fetch_content(self,url):
+
+    def fetch_content(self, url):
+        response = None
         """Fetches the content of the page and returns a BeautifulSoup object"""
         try:
             with httpx.Client() as client:
-                response = client.get(url,headers=self.headers())
+                response = client.get(url, headers=self.headers())
                 response.raise_for_status()
         except httpx.HTTPError as http_err:
             print(f'HTTP error occurred: {http_err}')
@@ -90,80 +90,64 @@ class Request:
             print(f"Scraped {url}")
             self.visited[url].print()
 
-    def scrape(self,url):
+    def scrape(self, url):
         """Scrapes the contents of the page"""
         content = self.fetch_content(url=url)
         if content:
-            title = self.safe_get(content,self.site.title_tag)
-            body = self.safe_get(content,self.site.body_tag)
-            date =  self.safe_get(content,self.site.date_tag)
-            author =  self.safe_get(content,self.site.author_tag)
-            return Content(url, title, body, date, author)
+            title = self.safe_get(content, self.site.title_tag)
+            body = self.safe_get(content, self.site.body_tag)
+            author = self.safe_get(content, self.site.author_tag)
+            date = content.select_one(self.site.date_tag)
+
+            if date:
+                date = date.text
+            else:
+                date = "Date not found"
+            return Content(url, title, body, author, date)
         else:
-            return Content(url, "Page not found", "", "","")
-       
-    def safe_get(self,page_object,selector):
+            return Content(url, "Title not found", "Page not found", "", "")
+
+    def safe_get(self, page_object, selector):
         """Extracts content from a BeautifulSoup object"""
         selected_elements = page_object.select(selector)
         if selected_elements is not None and len(selected_elements) > 0:
-            return '\n'.join([element.get_text() for element in selected_elements])
+            return '\n'.join([element.get_text(strip=True, separator=' ') for element in selected_elements])
         return ''
 
 
-site_data = {
+site_data = [{
     "name": "Oxford",
     "url": "https://www.ox.ac.uk/news-and-events",
     "target_pattern": r"https://www.ox.ac.uk/news/",
     "absolute_url": True,
     "title_tag": "h1",
-    "body_tag": "div",
-    "author_tag": "span",
+    "body_tag": "div span.field-item-single",
+    "author_tag": "author",
     "date_tag": "time"
-    """WORK HERE"""
-}
+},
+    {
+        "name": "CNN",
+        "url": "https://edition.cnn.com",
+        "target_pattern": r"^\/\d{4}",
+        "absolute_url": False,
+        "title_tag": "h1",
+        "body_tag": "div.article__content",
+        "author_tag": "byline__name",
+        "date_tag": "div.timestamp"
+    }, {
+        "name": "BBC",
+        "url": "https://www.bbc.com",
+        "target_pattern": r"^/news/articles",
+        "absolute_url": False,
+        "title_tag": "h1",
+        "body_tag": "div.sc-18fde0d6-0.dlWCEZ p",
+        "author_tag": "span.sc-2b5e3b35-7.bZCrck",
+        "date_tag": "time.sc-2b5e3b35-2"
+    }]
 
-request = Request(Website(**site_data))
-request.crawl()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+for site in site_data:
+    request = Request(Website(**site))
+    request.crawl()
 
 # class Article:
 #     """Contains information for scraping an article page"""
