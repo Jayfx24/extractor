@@ -1,5 +1,4 @@
 import re
-
 from bs4 import BeautifulSoup
 from faker import Faker
 import httpx
@@ -115,13 +114,14 @@ class Request:
         return ''
 
 
-site_data = [{
+site_data = [
+    {
     "name": "Oxford",
     "url": "https://www.ox.ac.uk/news-and-events",
     "target_pattern": r"https://www.ox.ac.uk/news/",
     "absolute_url": True,
     "title_tag": "h1",
-    "body_tag": "div span.field-item-single",
+    "body_tag": "div span.field-item-single p",
     "author_tag": "author",
     "date_tag": "time"
 },
@@ -132,9 +132,10 @@ site_data = [{
         "absolute_url": False,
         "title_tag": "h1",
         "body_tag": "div.article__content",
-        "author_tag": "byline__name",
+        "author_tag": ".byline__name",
         "date_tag": "div.timestamp"
-    }, {
+    }, 
+    {
         "name": "BBC",
         "url": "https://www.bbc.com",
         "target_pattern": r"^/news/articles",
